@@ -1,0 +1,148 @@
+zabbix_export:
+  version: '6.0'
+  date: '2023-01-09T13:35:04Z'
+  groups:
+    -
+      uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+    -
+      uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    -
+      uuid: 4b9b6cc07f5245bc93d059f3505d8a0a
+      template: 'Template ClamAV sensors active'
+      name: 'Template ClamAV sensors active'
+      description: |
+        ## Overview
+        
+        This template for ClamAV
+        
+        
+        The template adds monitoring of:
+        
+        * ClamAV Service
+        * ClamAV Version
+        * ClamAV DB Version
+        
+
+        The following agent parameters can be used to add the metrics into Zabbix:
+        
+        UserParameter=clamav.version,/usr/bin/clamscan --version  | awk 'BEGIN { FS="/" } { print $1}' | awk '{print $2}'
+        UserParameter=clamav.dbversion,/usr/bin/clamscan --version  | awk 'BEGIN { FS="/" } { print $2}'
+        UserParameter=clamav.update_date,/usr/bin/clamscan --version  | awk 'BEGIN { FS="/" } { print $3}'
+        UserParameter=clamav.dbage,echo $(( $(date +"%s") - $(date -d "$(/usr/bin/clamscan --version  | awk 'BEGIN { FS="/" } { print $3}')" +"%s") ))
+        
+        ## Author
+        
+        Dorofeev Andrei
+      groups:
+        -
+          name: Templates
+        -
+          name: Templates/Applications
+      items:
+        -
+          uuid: 026f5a1e2e8d4a44b0b3cbb19ff02003
+          name: 'ClamAV: database age'
+          key: clamav.dbage
+          history: 30d
+          units: s
+          tags:
+            -
+              tag: app
+              value: clamav
+          triggers:
+            -
+              uuid: 91d72610aeef4af78e1f3c8aafeb71c6
+              expression: 'last(/Template ClamAV sensors active/clamav.dbage)>{$DAYS_CRIT}'
+              name: 'ClamAV database has not been updated for more than {$DAYS_CRIT} days'
+              priority: HIGH
+              tags:
+                -
+                  tag: app
+                  value: clamav
+            -
+              uuid: 652228247d254e4f8bfac0ab53ca614b
+              expression: 'last(/Template ClamAV sensors active/clamav.dbage)>{$DAYS_WARN}'
+              name: 'ClamAV database has not been updated for more than {$DAYS_WARN} days'
+              priority: WARNING
+              dependencies:
+                -
+                  name: 'ClamAV database has not been updated for more than {$DAYS_CRIT} days'
+                  expression: 'last(/Template ClamAV sensors active/clamav.dbage)>{$DAYS_CRIT}'
+              tags:
+                -
+                  tag: app
+                  value: clamav
+        -
+          uuid: c17d96ab249b438bb41875bf8122776c
+          name: 'ClamAV: database date'
+          type: ZABBIX_ACTIVE
+          key: clamav.dbdate
+          history: 30d
+          units: unixtime
+          tags:
+            -
+              tag: app
+              value: clamav
+        -
+          uuid: 3502ae2b359644fcb0adfa03d9062e3c
+          name: 'ClamAV: database version'
+          type: ZABBIX_ACTIVE
+          key: clamav.dbversion
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          tags:
+            -
+              tag: app
+              value: clamav
+        -
+          uuid: 88848cac77514677b6148f40d9b463c4
+          name: 'ClamAV: version'
+          type: ZABBIX_ACTIVE
+          key: clamav.version
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          tags:
+            -
+              tag: app
+              value: clamav
+        -
+          uuid: 56627b271273480a873e0a3181e38214
+          name: 'ClamAV: Number of processes running'
+          type: ZABBIX_ACTIVE
+          key: 'proc.num[clamd]'
+          delay: 5m
+          history: 30d
+          tags:
+            -
+              tag: app
+              value: clamav
+          triggers:
+            -
+              uuid: 8f13371aac56452bbc6c7490c8283fbf
+              expression: 'last(/Template ClamAV sensors active/proc.num[clamd])=0'
+              name: 'ClamAV not running'
+              priority: AVERAGE
+              tags:
+                -
+                  tag: app
+                  value: clamav
+      tags:
+        -
+          tag: app
+          value: ClamAV
+      macros:
+        -
+          macro: '{$DAYS_CRIT}'
+          value: 30d
+          description: 'Time to trigger level HIGH'
+        -
+          macro: '{$DAYS_WARN}'
+          value: 15d
+          description: 'Time to trigger level WARN'
